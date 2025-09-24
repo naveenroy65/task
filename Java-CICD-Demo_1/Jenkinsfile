@@ -2,6 +2,14 @@ pipeline {
     agent any
 
     stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code from Git...'
+                checkout scm
+                // OR if you want to hardcode repo:
+                 git branch: 'main', url: 'https://github.com/naveenroy65/task/edit/main/Java-CICD-Demo_1.git'
+            }
+        }
         stage('Build') {
             steps {
                 echo 'Building the project...'
