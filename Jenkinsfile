@@ -43,16 +43,17 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    sh """
+                    sh '''
+                       export DOCKER_BUILDKIT=0
                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-                       """
-                    echo 'Pushing Docker image to registry...'
+                    '''
+                    echo 'Pushing Docker image to DockerHub...'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh """
+                        sh '''
                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                            docker push $DOCKER_IMAGE:$DOCKER_TAG
                            docker logout
-                           """
+                        '''
                     }
                 }
             }
@@ -62,11 +63,11 @@ pipeline {
             steps {
                 script {
                     echo 'Deploying application as Docker container...'
-                    sh """
+                    sh '''
                        docker stop task-app || true
                        docker rm task-app || true
                        docker run -d --name task-app -p 8080:8080 $DOCKER_IMAGE:$DOCKER_TAG
-                       """
+                    '''
                 }
             }
         }
