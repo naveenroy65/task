@@ -60,4 +60,11 @@ Before running the pipeline, ensure the following:
 ---
 
 2.Run the Build Pipeline.
+<br>
+<br>
+<img width="1617" height="233" alt="image" src="https://github.com/user-attachments/assets/14e5d5a2-e172-4bbb-83b7-292c2fdc536f" />
+<br>
+<br>
+<br>
+<img width="1901" height="747" alt="image" src="https://github.com/user-attachments/assets/9bf4bdb0-0bc1-4e67-9638-2db8bdacbbaf" />
 
