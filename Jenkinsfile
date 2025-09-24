@@ -6,8 +6,10 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "naveenroy65/task-app"  // Your Docker Hub repository
-        DOCKER_TAG   = "latest"
+        DOCKER_USER = "naveenrroy"
+        DOCKER_PASS = 'docker hub'
+        IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
+        IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
     }
 
     stages {
@@ -38,25 +40,20 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push') {
+       stage("Build & Push Docker Image") {
             steps {
                 script {
-                    echo 'Building Docker image...'
-                    sh '''
-                        export DOCKER_BUILDKIT=0
-                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-                    '''
-                    
-                    echo 'Pushing Docker image to DockerHub...'
-                    // This block now correctly uses your 'dockerhub' credential ID
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh '''
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push $DOCKER_IMAGE:$DOCKER_TAG
-                        '''
+                    docker.withRegistry('',DOCKER_PASS) {
+                        docker_image = docker.build "${IMAGE_NAME}"
+                    }
+
+                    docker.withRegistry('',DOCKER_PASS) {
+                        docker_image.push("${IMAGE_TAG}")
+                        docker_image.push('latest')
                     }
                 }
             }
+       }
             // This 'post' block ensures you always log out
             post {
                 always {
