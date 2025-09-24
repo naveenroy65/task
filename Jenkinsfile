@@ -2,12 +2,11 @@ pipeline {
     agent any
 
     tools {
-        // jdk 'Java11'
         maven 'Maven3'
     }
 
     environment {
-        DOCKER_IMAGE = "naveenroy65/task-app"   // Change to your Docker Hub repo
+        DOCKER_IMAGE = "naveenroy65/task-app"  // Your Docker Hub repository
         DOCKER_TAG   = "latest"
     }
 
@@ -44,16 +43,26 @@ pipeline {
                 script {
                     echo 'Building Docker image...'
                     sh '''
-                       export DOCKER_BUILDKIT=0
-                       docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                        export DOCKER_BUILDKIT=0
+                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
                     '''
+                    
                     echo 'Pushing Docker image to DockerHub...'
+                    // This block now correctly uses your 'dockerhub' credential ID
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
-                           echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                           docker push $DOCKER_IMAGE:$DOCKER_TAG
-                           docker logout
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push $DOCKER_IMAGE:$DOCKER_TAG
                         '''
+                    }
+                }
+            }
+            // This 'post' block ensures you always log out
+            post {
+                always {
+                    script {
+                        echo 'Logging out of Docker Hub...'
+                        sh 'docker logout'
                     }
                 }
             }
@@ -64,9 +73,9 @@ pipeline {
                 script {
                     echo 'Deploying application as Docker container...'
                     sh '''
-                       docker stop task-app || true
-                       docker rm task-app || true
-                       docker run -d --name task-app -p 8080:8080 $DOCKER_IMAGE:$DOCKER_TAG
+                        docker stop task-app || true
+                        docker rm task-app || true
+                        docker run -d --name task-app -p 8080:8080 $DOCKER_IMAGE:$DOCKER_TAG
                     '''
                 }
             }
