@@ -1,18 +1,20 @@
 pipeline {
     agent any
 
+    tools {
+        // jdk 'Java11'
+        maven 'Maven3'
+    }
+
     environment {
-        MAVEN_HOME = tool name: 'Maven', type: 'maven'
-        PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
+        DOCKER_IMAGE = "naveenroy65/task-app"   // Change to your Docker Hub repo
+        DOCKER_TAG   = "latest"
     }
 
     stages {
-
-        stage('Checkout SCM') {
+        stage("Checkout from SCM") {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/naveenroy65/task.git',
-                    credentialsId: 'github' // Make sure this credential exists in Jenkins
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/naveenroy65/task'
             }
         }
 
@@ -42,14 +44,15 @@ pipeline {
                 script {
                     echo 'Building Docker image...'
                     sh '''
-                        docker build -t naveenrroy/task-app:latest .
+                       export DOCKER_BUILDKIT=0
+                       docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
                     '''
                     echo 'Pushing Docker image to DockerHub...'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push naveenrroy/task-app:latest
-                            docker logout
+                           echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                           docker push $DOCKER_IMAGE:$DOCKER_TAG
+                           docker logout
                         '''
                     }
                 }
@@ -58,19 +61,15 @@ pipeline {
 
         stage('Deploy to Docker Container') {
             steps {
-                echo 'Deploy stage can be added here if needed'
-                // Example: docker run -d -p 8080:8080 naveenrroy/task-app:latest
+                script {
+                    echo 'Deploying application as Docker container...'
+                    sh '''
+                       docker stop task-app || true
+                       docker rm task-app || true
+                       docker run -d --name task-app -p 8080:8080 $DOCKER_IMAGE:$DOCKER_TAG
+                    '''
+                }
             }
-        }
-
-    }
-
-    post {
-        success {
-            echo 'Pipeline completed successfully!'
-        }
-        failure {
-            echo 'Pipeline failed!'
         }
     }
 }
