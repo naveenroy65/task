@@ -6,10 +6,19 @@ pipeline {
     }
 
     environment {
-        DOCKER_USER = "naveenrroy"
-        DOCKER_PASS = 'docker hub'
-        IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
-        IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+        // Define your application name here
+        APP_NAME        = 'task-app' 
+        
+        // Correctly define image name using the APP_NAME variable
+        DOCKER_IMAGE    = "naveenrroy/${APP_NAME}" 
+        
+        // Use the built-in BUILD_NUMBER for a unique tag
+        DOCKER_TAG      = "build-${BUILD_NUMBER}" 
+        
+        // Correctly load the 'dockerhub' credential. 
+        // DOCKER_CREDS_USR will contain the username.
+        // DOCKER_CREDS_PSW will contain the password/token.
+        DOCKER_CREDS    = credentials('dockerhub') 
     }
 
     stages {
@@ -40,41 +49,38 @@ pipeline {
             }
         }
 
-       stage("Build & Push Docker Image") {
+        stage('Build & Push Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('',DOCKER_PASS) {
-                        docker_image = docker.build "${IMAGE_NAME}"
-                    }
+                    echo "Building Docker image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
 
-                    docker.withRegistry('',DOCKER_PASS) {
-                        docker_image.push("${IMAGE_TAG}")
-                        docker_image.push('latest')
-                    }
+                    echo 'Logging in and pushing Docker image to DockerHub...'
+                    // Use the securely loaded credentials from the environment block
+                    sh "echo '${DOCKER_CREDS_PSW}' | docker login -u '${DOCKER_CREDS_USR}' --password-stdin"
+                    sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh "docker push ${DOCKER_IMAGE}:latest"
                 }
             }
-       }
-            // This 'post' block ensures you always log out
             post {
                 always {
-                    script {
-                        echo 'Logging out of Docker Hub...'
-                        sh 'docker logout'
-                    }
+                    // This block ensures you always log out
+                    echo 'Logging out of Docker Hub...'
+                    sh 'docker logout'
                 }
             }
         }
 
         stage('Deploy to Docker Container') {
             steps {
-                script {
-                    echo 'Deploying application as Docker container...'
-                    sh '''
-                        docker stop task-app || true
-                        docker rm task-app || true
-                        docker run -d --name task-app -p 8080:8080 $DOCKER_IMAGE:$DOCKER_TAG
-                    '''
-                }
+                echo 'Deploying application as a Docker container...'
+                // Use the correct DOCKER_IMAGE and DOCKER_TAG variables
+                sh """
+                    docker stop ${APP_NAME} || true
+                    docker rm ${APP_NAME} || true
+                    docker run -d --name ${APP_NAME} -p 8080:8080 ${DOCKER_IMAGE}:latest
+                """
             }
         }
     }
